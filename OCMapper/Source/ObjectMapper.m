@@ -284,7 +284,7 @@
     NSDictionary *normalizedSource = (self.normalizeDictionary) ? [self normalizedDictionaryFromDictionary:source forClass:class] : source;
 	
 	id <InstanceProvider> instanceProvider = [self instanceProviderForClass:class];
-	id object = [instanceProvider emptyInstanceForClass:class];
+	id object = [instanceProvider emptyInstanceForClass:class forDictionary:normalizedSource];
 	
 	for (NSString *key in normalizedSource)
 	{
