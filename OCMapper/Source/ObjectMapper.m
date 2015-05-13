@@ -545,25 +545,32 @@
 
 - (NSString *)typeForProperty:(NSString *)property andClass:(Class)class
 {
-	NSString *key = [NSString stringWithFormat:@"%@.%@", NSStringFromClass(class), property];
-	
-	if (self.mappedPropertyNames[key]) {
-		return self.mappedPropertyNames[key];
-	}
-	
-	const char *type = property_getAttributes(class_getProperty(class, [property UTF8String]));
-	NSString *typeString = [NSString stringWithUTF8String:type];
-	NSArray *attributes = [typeString componentsSeparatedByString:@","];
-	NSString *typeAttribute = [attributes objectAtIndex:0];
-	NSString *className = [[[typeAttribute substringFromIndex:1]
-							stringByReplacingOccurrencesOfString:@"@" withString:@""]
-						   stringByReplacingOccurrencesOfString:@"\"" withString:@""];
-	
-	if (className) {
-		self.mappedPropertyNames[key] = className;
-	}
-	
-	return className;
+    NSString *key = [NSString stringWithFormat:@"%@.%@", NSStringFromClass(class), property];
+    
+    if (self.mappedPropertyNames[key]) {
+        return self.mappedPropertyNames[key];
+    }
+    
+    objc_property_t objcProperty = class_getProperty(class, [property UTF8String]);
+    if (objcProperty) {
+        const char *type = property_getAttributes(objcProperty);
+        NSString *typeString = [NSString stringWithUTF8String:type];
+        NSArray *attributes = [typeString componentsSeparatedByString:@","];
+        NSString *typeAttribute = [attributes objectAtIndex:0];
+        NSString *className = [[[typeAttribute substringFromIndex:1]
+                                stringByReplacingOccurrencesOfString:@"@" withString:@""]
+                               stringByReplacingOccurrencesOfString:@"\"" withString:@""];
+        
+        if (className) {
+            self.mappedPropertyNames[key] = className;
+        }
+        
+        return className;
+    }
+    else {
+        return nil;
+    }
+    
 }
 
 @end

@@ -57,7 +57,7 @@
 	return ([class isSubclassOfClass:managedObjectClass]) ? NO : YES;
 }
 
-- (id)emptyInstanceForClass:(Class)class
+- (id)emptyInstanceForClass:(Class)class forDictionary:(NSDictionary *)dictionary
 {
 	return [[class alloc] init];
 }

@@ -85,10 +85,61 @@
 
 #pragma mark - InstanceProvider Methods -
 
-- (id)emptyInstanceForClass:(Class)class
+- (id)emptyInstanceForClass:(Class)class forDictionary:(NSDictionary *)dictionary
 {
-	NSEntityDescription *entity = [NSEntityDescription entityForName:NSStringFromClass(class) inManagedObjectContext:self.managedObjectContext];
-	return (entity) ? [[NSManagedObject alloc] initWithEntity:entity insertIntoManagedObjectContext:self.managedObjectContext] : nil;
+    NSManagedObject * existing = [self findExistingObjectForClass:class error:NULL keyProperties:dictionary];
+    if (existing) {
+        return existing;
+    } else {
+        NSEntityDescription *entity = [NSEntityDescription entityForName:NSStringFromClass(class) inManagedObjectContext:self.managedObjectContext];
+        return (entity) ? [[NSManagedObject alloc] initWithEntity:entity insertIntoManagedObjectContext:self.managedObjectContext] : nil;
+    }
+}
+
+- (NSManagedObject *)findExistingObjectForClass:(Class)aClass error:(NSError **)error keyProperties:(NSDictionary *)dictionary {
+    
+    UpsertInfo *upsertInfo = [self.uniqueKeysDictionary objectForKey:NSStringFromClass(aClass)];
+    
+    if (!upsertInfo || !upsertInfo.keys.count)
+        return nil;
+    
+    NSMutableArray *predicates = [NSMutableArray array];
+    
+    for (int i=0 ; i<upsertInfo.keys.count ; i++)
+    {
+        NSString *key = [upsertInfo.keys objectAtIndex:i];
+        id value = [dictionary valueForKey:key];
+        
+        if (key && value)
+        {
+            NSPredicate *predicate = [NSPredicate predicateWithFormat:@"%K == %@", key, value];
+            [predicates addObject:predicate];
+        }
+        else
+        {
+            *error = [NSError errorWithDomain:[NSString stringWithFormat:@"Value for property '%@' is null. Keys should not be nullable", key] code:0 userInfo:nil];
+            return nil;
+        }
+    }
+    
+    NSPredicate *compundPredicate = [NSCompoundPredicate andPredicateWithSubpredicates:predicates];
+    NSFetchRequest *request = [[NSFetchRequest alloc] init];
+    [request setEntity:[NSEntityDescription entityForName:NSStringFromClass(aClass) inManagedObjectContext:self.managedObjectContext]];
+    [request setPredicate:compundPredicate];
+    
+    NSError *fetchError;
+    NSArray *existingObjects = [self.managedObjectContext executeFetchRequest:request error:&fetchError];
+    
+    if (existingObjects.count == 0) {
+        return nil;
+    }
+    else if (existingObjects.count == 1) {
+        return existingObjects[0];
+    }
+    else {
+        *error = [NSError errorWithDomain:@"Multiple instances were found based on given key(s)" code:0 userInfo:nil];
+        return nil;
+    }
 }
 
 - (id)emptyCollectionInstance
